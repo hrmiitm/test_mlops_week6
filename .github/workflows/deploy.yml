@@ -9,6 +9,7 @@ env:
   GCP_PROJECT_ID: mlops-475608
   GCP_REGION: us-central1
   ARTIFACT_REGISTRY_REPO: us-central1-docker.pkg.dev
+  ARTIFACT_REGISTRY_REPO_NAME: my-repo
   IMAGE_NAME: iris-api
   CLUSTER_NAME: demo-gke-iris-cluster
   CLUSTER_ZONE: us-central1
@@ -40,15 +41,15 @@ jobs:
       # Step 5: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/my-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} .
-          docker tag ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-                     ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:latest
+          docker build -t ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
 
       # Step 6: Push to Artifact Registry
       - name: Push image to Artifact Registry
         run: |
-          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
 
       # Step 7: Get cluster credentials
       - name: Get GKE cluster credentials
@@ -63,11 +64,11 @@ jobs:
           gcloud components install gke-gcloud-auth-plugin
           export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
-      # Step 9: Deploy to GKE using kubectl
+      # Step 9: Deploy to GKE
       - name: Deploy to GKE
         run: |
           kubectl set image deployment/demo-iris-workload \
-            demo-iris-workload=${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            demo-iris-workload=${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --record
 
       # Step 10: Verify deployment
