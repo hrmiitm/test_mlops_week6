@@ -64,12 +64,11 @@ jobs:
           gcloud components install gke-gcloud-auth-plugin
           export USE_GKE_GCLOUD_AUTH_PLUGIN=True
 
-      # Step 9: Deploy to GKE
+      # Step 9: Deploy to GKE using kubectl patch (FIXED)
       - name: Deploy to GKE
         run: |
-          kubectl set image deployment/demo-iris-workload \
-            demo-iris-workload=${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --record
+          kubectl patch deployment demo-iris-workload \
+            -p '{"spec":{"template":{"spec":{"containers":[{"name":"iris-api-sha256-1","image":"${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"}]}}}}'
 
       # Step 10: Verify deployment
       - name: Verify deployment
