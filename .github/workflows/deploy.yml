@@ -40,7 +40,7 @@ jobs:
       # Step 5: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/demo-gke-iris-cluster-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker build -t ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/my-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} .
           docker tag ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} \
                      ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:latest
 
