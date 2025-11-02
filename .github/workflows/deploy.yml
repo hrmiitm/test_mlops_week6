@@ -1,0 +1,78 @@
+name: Build and Deploy Iris API to GKE
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_PROJECT_ID: mlops-475608
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY_REPO: us-central1-docker.pkg.dev
+  IMAGE_NAME: iris-api
+  CLUSTER_NAME: demo-gke-iris-cluster
+  CLUSTER_ZONE: us-central1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Step 3: Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Step 4: Configure Docker authentication
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_REPO }}
+
+      # Step 5: Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:latest
+
+      # Step 6: Push to Artifact Registry
+      - name: Push image to Artifact Registry
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:latest
+
+      # Step 7: Get cluster credentials
+      - name: Get GKE cluster credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.CLUSTER_NAME }} \
+            --zone ${{ env.CLUSTER_ZONE }} \
+            --project ${{ env.GCP_PROJECT_ID }}
+
+      # Step 8: Install gke-gcloud-auth-plugin
+      - name: Install GKE auth plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+
+      # Step 9: Deploy to GKE using kubectl
+      - name: Deploy to GKE
+        run: |
+          kubectl set image deployment/demo-iris-workload \
+            demo-iris-workload=${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.GCP_PROJECT_ID }}/${{ env.CLUSTER_NAME }}-repo/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --record
+
+      # Step 10: Verify deployment
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/demo-iris-workload
+          kubectl get pods
+          kubectl get services
